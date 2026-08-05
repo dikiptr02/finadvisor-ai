@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+
 from app.routers import health
 
 app = FastAPI(title="LLM Router Service", version="0.1.0")
