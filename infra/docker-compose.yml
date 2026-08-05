@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  api-gateaway:
+    build: ../services/api-gateway
+    ports:
+      - "8000:8000"
+    depends_on:
+      - rag-service
+      - agent-service
+      - llm-router-service
+      - ml-service
+      - forecast-service
+    
+  rag-service:
+    build: ../services/rag-service
+    ports:
+      - "8001:8000"
+    
+  agent-service:
+    build: ../services/agent-service
+    ports:
+      - "8002:8000"
+
+  llm-router-service:
+    build: ../services/llm-router-service
+    ports:
+      - "8003:8000"
+
+  ml-service:
+    build: ../services/ml-service
+    ports:
+      - "8004:8000"
+
+  forecast-service:
+    build: ../services/forecast-service
+    ports:
+      - "8005:8000"
