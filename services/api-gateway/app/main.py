@@ -19,6 +19,6 @@ async def health_check():
             try:
                 resp = await client.get(f"{base_url}/internal/v1/health")
                 results[name] = resp.json()["data"]["status"]
-            except Exception:
+            except Exception:  # noqa: BLE001
                 results[name] = "unreachable"
     return {"success": True, "data": results, "trace_id": None, "error": None}
