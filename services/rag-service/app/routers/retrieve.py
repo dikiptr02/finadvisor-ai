@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from app.retrieval.retriever import Retriever
 
 router = APIRouter()
-Retriever = Retriever()
+retriever = Retriever()
 
 
 class RetrieveRequest(BaseModel):
@@ -13,5 +13,5 @@ class RetrieveRequest(BaseModel):
 
 @router.post("/internal/v1/retrieve")
 def retrieve(req: RetrieveRequest):
-    chunks = Retriever.search(req.query)
+    chunks = retriever.search(req.query)
     return {"success": True, "data": {"chunks": chunks}, "trace_id": None, "error": None}
