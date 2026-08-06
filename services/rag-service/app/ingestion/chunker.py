@@ -1,6 +1,7 @@
-from fastembed import TextEmbedding
-import numpy as np
 import re
+
+import numpy as np
+from fastembed import TextEmbedding
 
 
 class SemanticChunker:

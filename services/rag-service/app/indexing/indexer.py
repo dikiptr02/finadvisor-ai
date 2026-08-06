@@ -1,5 +1,6 @@
 import uuid
-from fastembed import TextEmbedding, SparseTextEmbedding
+
+from fastembed import SparseTextEmbedding, TextEmbedding
 from qdrant_client import QdrantClient, models
 
 from app.config import settings

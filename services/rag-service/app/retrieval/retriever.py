@@ -1,4 +1,4 @@
-from fastembed import TextEmbedding, SparseTextEmbedding
+from fastembed import SparseTextEmbedding, TextEmbedding
 from fastembed.rerank.cross_encoder import TextCrossEncoder
 from qdrant_client import QdrantClient, models
 
@@ -13,8 +13,8 @@ class Retriever:
         self.reranker = TextCrossEncoder(model_name=settings.reranker_model)
 
     def search(self, query: str) -> list[dict]:
-        dense_vec = list(self.dense_model.embed([query]))[0]
-        sparse_vec = list(self.sparse_model.embed([query]))[0]
+        dense_vec = next(iter(self.dense_model.embed([query])))
+        sparse_vec = next(iter(self.sparse_model.embed([query])))
 
         # Hybrid: prefetch dense & sparse, gabung dengan Reciprocal Rank Fusion
         results = self.client.query_points(
