@@ -1,5 +1,5 @@
 services:
-  api-gateaway:
+  api-gateway:
     build: ../services/api-gateway
     ports:
       - "8000:8000"
