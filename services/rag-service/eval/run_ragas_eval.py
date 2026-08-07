@@ -1,5 +1,4 @@
 import sys
-import os
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
@@ -7,7 +6,12 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 from datasets import Dataset
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 from ragas import evaluate
-from ragas.metrics import answer_relevancy, context_precision, context_recall, faithfulness
+from ragas.metrics import (
+    answer_relevancy,
+    context_precision,
+    context_recall,
+    faithfulness,
+)
 from ragas.run_config import RunConfig
 
 from app.retrieval.retriever import Retriever
