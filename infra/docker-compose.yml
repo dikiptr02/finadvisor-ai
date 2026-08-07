@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   api-gateaway:
     build: ../services/api-gateway
@@ -26,8 +24,14 @@ services:
 
   llm-router-service:
     build: ../services/llm-router-service
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
     ports:
       - "8003:8000"
+    depends_on:
+      - ollama
 
   ml-service:
     build: ../services/ml-service
@@ -47,5 +51,22 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=-1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
 volumes:
   qdrant_data:
+  ollama_data:
