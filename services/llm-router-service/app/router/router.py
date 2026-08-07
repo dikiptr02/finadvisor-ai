@@ -1,6 +1,5 @@
 import logging
 
-
 from app.config import PROVIDER_CHAIN
 from app.providers.client import call_provider
 
@@ -29,7 +28,7 @@ def generate_with_fallback(prompt: str) -> dict:
                 "model_used": provider.model,
                 "fallback_count": len(errors),
             }
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning(f"{provider.name} failed: {exc}")
             errors.append({"provider": provider.name, "error": str(exc)})
             continue
