@@ -6,12 +6,16 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
+from torch import nn
 
 from app.classical.arima_model import forecast_arima
 from app.classical.prophet_model import forecast_prophet
-from app.deep_learning.lstm_model import ForecastLSTM, build_windowed_dataset, recursive_forecast
+from app.deep_learning.lstm_model import (
+    ForecastLSTM,
+    build_windowed_dataset,
+    recursive_forecast,
+)
 from data.build_timeseries import build_daily_expense_series
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -92,14 +96,14 @@ def main():
             arima_pred = forecast_arima(train_df["daily_expense"], HORIZON)
             mape, rmse = evaluate_forecast(y_true, arima_pred)
             results["arima"].append({"mape": mape, "rmse": rmse})
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"  ARIMA gagal: {exc}")
 
         try:
             prophet_pred = forecast_prophet(train_df[["date", "daily_expense"]], HORIZON)
             mape, rmse = evaluate_forecast(y_true, prophet_pred)
             results["prophet"].append({"mape": mape, "rmse": rmse})
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"  Prophet gagal: {exc}")
 
         try:
@@ -107,7 +111,7 @@ def main():
             lstm_pred = recursive_forecast(lstm_model, last_window, HORIZON, DEVICE)
             mape, rmse = evaluate_forecast(y_true, lstm_pred)
             results["lstm"].append({"mape": mape, "rmse": rmse})
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"  LSTM gagal: {exc}")
 
     print("\n" + "=" * 50)

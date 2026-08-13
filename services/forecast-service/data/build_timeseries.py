@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-def build_daily_expense_series(transactions_path: str, exclude_categories: list[str] = None) -> pd.DataFrame:
+def build_daily_expense_series(transactions_path: str, exclude_categories: list[str] | None = None) -> pd.DataFrame:
     exclude_categories = exclude_categories or ["gaji_pendapatan"]
 
     df = pd.read_csv(transactions_path)
