@@ -1,6 +1,5 @@
-from langgraph.types import interrupt
-
 from app.state_machine.state import AgentState
+from langgraph.types import interrupt
 
 
 def pending_approval_node(state: AgentState) -> dict:

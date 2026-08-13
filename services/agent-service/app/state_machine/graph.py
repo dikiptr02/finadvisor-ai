@@ -1,6 +1,3 @@
-from langgraph.checkpoint.memory import MemorySaver
-from langgraph.graph import END, StateGraph
-
 from app.state_machine.nodes.approval import pending_approval_node
 from app.state_machine.nodes.intent_detection import intent_detection_node
 from app.state_machine.nodes.reason import reason_node
@@ -8,6 +5,8 @@ from app.state_machine.nodes.respond import respond_node
 from app.state_machine.nodes.retrieve import retrieve_context_node
 from app.state_machine.nodes.verifier import verifier_node
 from app.state_machine.state import AgentState
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, StateGraph
 
 
 def route_after_reason(state: AgentState) -> str:

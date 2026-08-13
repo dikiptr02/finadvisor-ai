@@ -1,5 +1,4 @@
 import httpx
-
 from app.state_machine.state import AgentState
 
 RAG_SERVICE_URL = "http://rag-service:8000/internal/v1/retrieve"

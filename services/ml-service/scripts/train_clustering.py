@@ -4,11 +4,10 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 import pandas as pd
+from app.clustering.features import build_user_features
 from sklearn.cluster import KMeans
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 from sklearn.preprocessing import LabelEncoder, StandardScaler
-
-from app.clustering.features import build_user_features
 
 N_CLUSTERS = 4  # sesuai jumlah segmen yang kita tanam di generator (hemat/boros/investor/standar)
 

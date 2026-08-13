@@ -1,5 +1,5 @@
-from fastembed import TextEmbedding
 import numpy as np
+from fastembed import TextEmbedding
 
 
 class TextEmbedder:

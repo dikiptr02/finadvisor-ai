@@ -6,14 +6,13 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
-from sklearn.metrics import classification_report
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
-
 from app.classifier.embed import TextEmbedder
 from app.classifier.model import ClassifierHead
 from data.categories import CATEGORIES
+from sklearn.metrics import classification_report
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from torch import nn
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 EPOCHS = 100

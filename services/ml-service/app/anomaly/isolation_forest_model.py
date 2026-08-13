@@ -1,5 +1,5 @@
-from sklearn.ensemble import IsolationForest
 import numpy as np
+from sklearn.ensemble import IsolationForest
 
 
 class IsolationForestDetector:

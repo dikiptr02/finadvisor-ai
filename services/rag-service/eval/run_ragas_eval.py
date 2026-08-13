@@ -3,7 +3,9 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
+from app.retrieval.retriever import Retriever
 from datasets import Dataset
+from eval.golden_dataset import GOLDEN_DATASET
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 from ragas import evaluate
 from ragas.metrics import (
@@ -13,9 +15,6 @@ from ragas.metrics import (
     faithfulness,
 )
 from ragas.run_config import RunConfig
-
-from app.retrieval.retriever import Retriever
-from eval.golden_dataset import GOLDEN_DATASET
 
 OLLAMA_BASE_URL = "http://ollama:11434"
 OLLAMA_LLM_MODEL = "llama3.2"

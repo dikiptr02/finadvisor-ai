@@ -1,7 +1,6 @@
+from app.retrieval.retriever import Retriever
 from fastapi import APIRouter
 from pydantic import BaseModel
-
-from app.retrieval.retriever import Retriever
 
 router = APIRouter()
 retriever = Retriever()

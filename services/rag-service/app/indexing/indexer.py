@@ -1,9 +1,8 @@
 import uuid
 
+from app.config import settings
 from fastembed import SparseTextEmbedding, TextEmbedding
 from qdrant_client import QdrantClient, models
-
-from app.config import settings
 
 
 class Indexer:

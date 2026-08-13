@@ -1,8 +1,8 @@
 import random
-import sys
 import string
+import sys
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -81,7 +81,7 @@ def generate_dataset() -> pd.DataFrame:
         segment = random.choice(segments)
         low_tx, high_tx = USER_SEGMENTS[segment]["transactions_per_month"]
 
-        start_date = datetime.now() - timedelta(days=30 * MONTHS_OF_HISTORY)
+        start_date = datetime.now(tz=timezone.utc) - timedelta(days=30 * MONTHS_OF_HISTORY)
 
         for month in range(MONTHS_OF_HISTORY):
             n_tx = random.randint(low_tx, high_tx)

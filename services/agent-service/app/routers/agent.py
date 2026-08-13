@@ -1,8 +1,7 @@
+from app.state_machine.graph import build_graph
 from fastapi import APIRouter
 from langgraph.types import Command
 from pydantic import BaseModel
-
-from app.state_machine.graph import build_graph
 
 router = APIRouter()
 agent_graph = build_graph()
