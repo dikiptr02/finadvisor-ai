@@ -1,5 +1,6 @@
-from app.config import ProviderConfig
 from openai import OpenAI
+
+from app.config import ProviderConfig
 
 
 def call_provider(provider: ProviderConfig, prompt: str, timeout: float = 15.0) -> str:

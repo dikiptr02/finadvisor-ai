@@ -1,4 +1,5 @@
 import httpx
+
 from app.state_machine.state import AgentState
 
 LLM_ROUTER_URL = "http://llm-router-service:8000/internal/v1/generate"

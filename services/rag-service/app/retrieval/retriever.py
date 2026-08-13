@@ -1,7 +1,8 @@
-from app.config import settings
 from fastembed import SparseTextEmbedding, TextEmbedding
 from fastembed.rerank.cross_encoder import TextCrossEncoder
 from qdrant_client import QdrantClient, models
+
+from app.config import settings
 
 
 class Retriever:

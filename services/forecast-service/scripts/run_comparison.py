@@ -6,6 +6,9 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 import numpy as np
 import pandas as pd
 import torch
+from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
+from torch import nn
+
 from app.classical.arima_model import forecast_arima
 from app.classical.prophet_model import forecast_prophet
 from app.deep_learning.lstm_model import (
@@ -14,8 +17,6 @@ from app.deep_learning.lstm_model import (
     recursive_forecast,
 )
 from data.build_timeseries import build_daily_expense_series
-from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
-from torch import nn
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 N_SAMPLE_USERS = 30

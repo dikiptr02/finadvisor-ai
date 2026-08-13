@@ -1,6 +1,7 @@
-from app.router.router import AllProvidersFailedError, generate_with_fallback
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+
+from app.router.router import AllProvidersFailedError, generate_with_fallback
 
 router = APIRouter()
 

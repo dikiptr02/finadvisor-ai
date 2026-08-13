@@ -6,11 +6,12 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 import numpy as np
 import pandas as pd
 import torch
+from sklearn.metrics import classification_report, roc_auc_score
+from torch import nn
+
 from app.anomaly.autoencoder_model import Autoencoder
 from app.anomaly.features import AnomalyFeatureBuilder
 from app.anomaly.isolation_forest_model import IsolationForestDetector
-from sklearn.metrics import classification_report, roc_auc_score
-from torch import nn
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 AE_EPOCHS = 50
