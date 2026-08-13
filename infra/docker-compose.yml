@@ -37,11 +37,15 @@ services:
     build: ../services/ml-service
     ports:
       - "8004:8000"
+    volumes:
+      - shared_data:/app/shared_data
 
   forecast-service:
     build: ../services/forecast-service
     ports:
       - "8005:8000"
+    volumes:
+      - shared_data:/app/shared_data
 
   qdrant:
     image: qdrant/qdrant:v1.12.4
@@ -70,3 +74,4 @@ services:
 volumes:
   qdrant_data:
   ollama_data:
+  shared_data:

@@ -95,7 +95,7 @@ def generate_dataset() -> pd.DataFrame:
 
 def main():
     df = generate_dataset()
-    df.to_csv("data/synthetic_transactions.csv", index=False)
+    df.to_csv("shared_data/synthetic_transactions.csv", index=False)
     print(f"Generated {len(df)} transactions for {df['user_id'].nunique()} users")
     print(f"Anomalies injected: {df['is_anomaly_ground_truth'].sum()} ({df['is_anomaly_ground_truth'].mean():.2%})")
     print(df["category"].value_counts())
