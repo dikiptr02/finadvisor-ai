@@ -1,3 +1,4 @@
+import copy
 import sys
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from app.classical.arima_model import forecast_arima
 from app.classical.prophet_model import forecast_prophet
 from app.deep_learning.lstm_model import (
     ForecastLSTM,
+    SeriesScaler,
     build_windowed_dataset,
     recursive_forecast,
 )
@@ -22,52 +24,112 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 N_SAMPLE_USERS = 30
 HORIZON = 14  # forecast 14 hari ke depan
 WINDOW = 14   # LSTM lihat 14 hari terakhir untuk prediksi 1 hari berikutnya
-LSTM_EPOCHS = 30
+LSTM_EPOCHS = 150
 
 
-def train_global_lstm(daily_df: pd.DataFrame, sample_user_ids: list[str]) -> ForecastLSTM:
-    # LSTM dilatih dari SEMUA user (bukan hanya sample) supaya global model
-    # benar-benar belajar dari sebanyak mungkin pola, lalu dites khusus di sample.
+def train_global_lstm(daily_df: pd.DataFrame) -> tuple[ForecastLSTM, SeriesScaler]:
+    global_scaler = SeriesScaler().fit(daily_df["daily_expense"].values)
+
     all_X, all_y = [], []
-    for user_id, group in daily_df.groupby("user_id"):
+    for _user_id, group in daily_df.groupby("user_id"):
         series = group.sort_values("date")["daily_expense"].values
         train_series = series[:-HORIZON] if len(series) > HORIZON else series
         if len(train_series) <= WINDOW:
             continue
-        X, y = build_windowed_dataset(train_series, WINDOW)
+
+        train_series_scaled = global_scaler.transform(train_series)
+        X, y = build_windowed_dataset(train_series_scaled, WINDOW)
         all_X.append(X)
         all_y.append(y)
 
-    X_train = np.concatenate(all_X)
-    y_train = np.concatenate(all_y)
+    X_all = np.concatenate(all_X)
+    y_all = np.concatenate(all_y)
 
-    X_t = torch.tensor(X_train, dtype=torch.float32).reshape(-1, WINDOW, 1).to(DEVICE)
-    y_t = torch.tensor(y_train, dtype=torch.float32).reshape(-1, 1).to(DEVICE)
+    # Train/validation split (90/10) untuk early stopping
+    n = len(X_all)
+    rng_split = np.random.default_rng(42)
+    indices = rng_split.permutation(n)
+    n_val = max(1, int(n * 0.1))
+    train_idx, val_idx = indices[n_val:], indices[:n_val]
 
-    model = ForecastLSTM().to(DEVICE)
+    X_tr = torch.tensor(X_all[train_idx], dtype=torch.float32).reshape(-1, WINDOW, 1).to(DEVICE)
+    y_tr = torch.tensor(y_all[train_idx], dtype=torch.float32).reshape(-1, 1).to(DEVICE)
+    X_va = torch.tensor(X_all[val_idx], dtype=torch.float32).reshape(-1, WINDOW, 1).to(DEVICE)
+    y_va = torch.tensor(y_all[val_idx], dtype=torch.float32).reshape(-1, 1).to(DEVICE)
+
+    model = ForecastLSTM(hidden_dim=64, num_layers=2).to(DEVICE)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5)
     criterion = nn.MSELoss()
 
-    print(f"Training global LSTM di {len(X_train)} window dari semua user...")
-    model.train()
+    print(f"Training global LSTM di {n} window (train={len(train_idx)}, val={len(val_idx)})...")
+
+    best_val_loss = float("inf")
+    best_state = None
+    patience_counter = 0
+    patience_limit = 20
+
     for epoch in range(LSTM_EPOCHS):
+        model.train()
         optimizer.zero_grad()
-        pred = model(X_t)
-        loss = criterion(pred, y_t)
+        pred = model(X_tr)
+        loss = criterion(pred, y_tr)
         loss.backward()
         optimizer.step()
-        if (epoch + 1) % 10 == 0:
-            print(f"  Epoch {epoch + 1}/{LSTM_EPOCHS} - loss: {loss.item():.2f}")
 
-    return model
+        model.eval()
+        with torch.no_grad():
+            val_pred = model(X_va)
+            val_loss = criterion(val_pred, y_va).item()
+
+        scheduler.step(val_loss)
+
+        if (epoch + 1) % 20 == 0:
+            current_lr = optimizer.param_groups[0]["lr"]
+            print(
+                f"  Epoch {epoch + 1}/{LSTM_EPOCHS}"
+                f" - train_loss: {loss.item():.4f}"
+                f" - val_loss: {val_loss:.4f}"
+                f" - lr: {current_lr:.1e}"
+            )
+
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            patience_counter = 0
+            best_state = copy.deepcopy(model.state_dict())
+        else:
+            patience_counter += 1
+            if patience_counter >= patience_limit:
+                print(f"  Early stopping di epoch {epoch + 1} (val_loss terbaik: {best_val_loss:.4f})")
+                break
+
+    if best_state is not None:
+        model.load_state_dict(best_state)
+
+    return model, global_scaler
 
 
-def evaluate_forecast(y_true: np.ndarray, y_pred: np.ndarray) -> tuple[float, float]:
-    # Tambah epsilon kecil untuk hindari div-by-zero di MAPE saat expense harian = 0
-    y_true_safe = np.where(y_true == 0, 1e-6, y_true)
-    mape = mean_absolute_percentage_error(y_true_safe, y_pred)
+def evaluate_forecast(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-    return mape, rmse
+    mae = np.mean(np.abs(y_true - y_pred))
+
+    # MAPE klasik TIDAK BISA dipakai apa adanya di sini -- banyak hari expense = 0,
+    # dan pembagian dengan angka mendekati 0 menghasilkan persentase yang meledak
+    # tak berarti (ini bug di versi sebelumnya). Solusi: hitung MAPE HANYA di hari
+    # dengan expense > 0.
+    nonzero_mask = y_true > 0
+    if nonzero_mask.sum() > 0:
+        mape = mean_absolute_percentage_error(y_true[nonzero_mask], y_pred[nonzero_mask])
+    else:
+        mape = float("nan")
+
+    # WAPE (Weighted Absolute Percentage Error) -- metrik agregat yang lebih stabil
+    # untuk deret waktu dengan banyak nol, karena membagi TOTAL error dengan TOTAL
+    # actual (bukan per-titik), sehingga tidak meledak akibat pembagian per hari.
+    total_actual = np.sum(np.abs(y_true))
+    wape = np.sum(np.abs(y_true - y_pred)) / total_actual if total_actual > 0 else float("nan")
+
+    return {"rmse": rmse, "mae": mae, "mape": mape, "wape": wape}
 
 
 def main():
@@ -77,7 +139,7 @@ def main():
     rng = np.random.default_rng(42)
     sample_users = rng.choice(all_users, size=min(N_SAMPLE_USERS, len(all_users)), replace=False)
 
-    lstm_model = train_global_lstm(daily_df, sample_users)
+    lstm_model, scaler = train_global_lstm(daily_df)
 
     results = {"arima": [], "prophet": [], "lstm": []}
 
@@ -94,36 +156,39 @@ def main():
 
         try:
             arima_pred = forecast_arima(train_df["daily_expense"], HORIZON)
-            mape, rmse = evaluate_forecast(y_true, arima_pred)
-            results["arima"].append({"mape": mape, "rmse": rmse})
+            results["arima"].append(evaluate_forecast(y_true, arima_pred))
         except Exception as exc:  # noqa: BLE001
             print(f"  ARIMA gagal: {exc}")
 
         try:
             prophet_pred = forecast_prophet(train_df[["date", "daily_expense"]], HORIZON)
-            mape, rmse = evaluate_forecast(y_true, prophet_pred)
-            results["prophet"].append({"mape": mape, "rmse": rmse})
+            results["prophet"].append(evaluate_forecast(y_true, prophet_pred))
         except Exception as exc:  # noqa: BLE001
             print(f"  Prophet gagal: {exc}")
 
         try:
-            last_window = train_df["daily_expense"].values[-WINDOW:]
-            lstm_pred = recursive_forecast(lstm_model, last_window, HORIZON, DEVICE)
-            mape, rmse = evaluate_forecast(y_true, lstm_pred)
-            results["lstm"].append({"mape": mape, "rmse": rmse})
+            last_window_raw = train_df["daily_expense"].values[-WINDOW:]
+            last_window_scaled = scaler.transform(last_window_raw)
+            lstm_pred = recursive_forecast(lstm_model, last_window_scaled, HORIZON, DEVICE, scaler)
+            results["lstm"].append(evaluate_forecast(y_true, lstm_pred))
         except Exception as exc:  # noqa: BLE001
             print(f"  LSTM gagal: {exc}")
 
-    print("\n" + "=" * 50)
+    print("\n" + "=" * 70)
     print("STUDI KOMPARASI FORECASTING")
-    print("=" * 50)
+    print("=" * 70)
     for method, scores in results.items():
         if not scores:
             print(f"{method}: tidak ada hasil valid")
             continue
-        avg_mape = np.mean([s["mape"] for s in scores])
         avg_rmse = np.mean([s["rmse"] for s in scores])
-        print(f"{method.upper():10s} | avg MAPE: {avg_mape:.2%} | avg RMSE: {avg_rmse:,.0f} | n_users: {len(scores)}")
+        avg_mae = np.mean([s["mae"] for s in scores])
+        avg_mape = np.nanmean([s["mape"] for s in scores])
+        avg_wape = np.nanmean([s["wape"] for s in scores])
+        print(
+            f"{method.upper():10s} | RMSE: {avg_rmse:12,.0f} | MAE: {avg_mae:12,.0f} "
+            f"| MAPE (hari>0): {avg_mape:.2%} | WAPE: {avg_wape:.2%} | n_users: {len(scores)}"
+        )
 
 
 if __name__ == "__main__":
