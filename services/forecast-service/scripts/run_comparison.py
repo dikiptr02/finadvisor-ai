@@ -7,11 +7,13 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 import numpy as np
 import pandas as pd
 import torch
+import mlflow
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 from torch import nn
 
 from app.classical.arima_model import forecast_arima
 from app.classical.prophet_model import forecast_prophet
+
 from app.deep_learning.lstm_model import (
     ForecastLSTM,
     SeriesScaler,
@@ -25,6 +27,9 @@ N_SAMPLE_USERS = 30
 HORIZON = 14  # forecast 14 hari ke depan
 WINDOW = 14   # LSTM lihat 14 hari terakhir untuk prediksi 1 hari berikutnya
 LSTM_EPOCHS = 150
+MLFLOW_TRACKING_URI = "http://mlflow:5000"
+MLFLOW_EXPERIMENT_NAME = "expense-forecasting"
+
 
 
 def train_global_lstm(daily_df: pd.DataFrame) -> tuple[ForecastLSTM, SeriesScaler]:
@@ -174,6 +179,9 @@ def main():
         except Exception as exc:  # noqa: BLE001
             print(f"  LSTM gagal: {exc}")
 
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
+
     print("\n" + "=" * 70)
     print("STUDI KOMPARASI FORECASTING")
     print("=" * 70)
@@ -181,14 +189,27 @@ def main():
         if not scores:
             print(f"{method}: tidak ada hasil valid")
             continue
+
         avg_rmse = np.mean([s["rmse"] for s in scores])
         avg_mae = np.mean([s["mae"] for s in scores])
         avg_mape = np.nanmean([s["mape"] for s in scores])
         avg_wape = np.nanmean([s["wape"] for s in scores])
+
         print(
             f"{method.upper():10s} | RMSE: {avg_rmse:12,.0f} | MAE: {avg_mae:12,.0f} "
             f"| MAPE (hari>0): {avg_mape:.2%} | WAPE: {avg_wape:.2%} | n_users: {len(scores)}"
         )
+
+        with mlflow.start_run(run_name=method):
+            mlflow.set_tag("model_type", method)
+            mlflow.set_tag("horizon_days", HORIZON)
+            mlflow.log_metrics({
+                "rmse": avg_rmse,
+                "mae": avg_mae,
+                "mape": avg_mape,
+                "wape": avg_wape,
+                "n_users_evaluated": len(scores),
+            })
 
 
 if __name__ == "__main__":

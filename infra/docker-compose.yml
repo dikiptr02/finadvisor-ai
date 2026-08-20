@@ -39,6 +39,11 @@ services:
       - "8004:8000"
     volumes:
       - shared_data:/app/shared_data
+      - ../mlops:/mlops
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
 
   forecast-service:
     build: ../services/forecast-service
@@ -46,6 +51,10 @@ services:
       - "8005:8000"
     volumes:
       - shared_data:/app/shared_data
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
 
   qdrant:
     image: qdrant/qdrant:v1.12.4
@@ -71,7 +80,61 @@ services:
               count: all
               capabilities: [gpu]
 
+  mlflow:
+    build: ../mlops/mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+
+  postgres-airflow:
+    image: postgres:16
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    volumes:
+      - postgres_airflow_data:/var/lib/postgresql/data
+
+  airflow-init:
+    build: ../orchestration/airflow
+    depends_on:
+      - postgres-airflow
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+    entrypoint: /bin/bash
+    command: -c "airflow db migrate && airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com"
+
+  airflow-webserver:
+    build: ../orchestration/airflow
+    depends_on:
+      - airflow-init
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../orchestration/airflow/dags:/opt/airflow/dags
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: webserver
+
+  airflow-scheduler:
+    build: ../orchestration/airflow
+    depends_on:
+      - airflow-init
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+    volumes:
+      - ../orchestration/airflow/dags:/opt/airflow/dags
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: scheduler
+
 volumes:
   qdrant_data:
   ollama_data:
   shared_data:
+  mlflow_data:
+  postgres_airflow_data:
